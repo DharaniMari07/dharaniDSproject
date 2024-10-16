@@ -1,0 +1,247 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+
+#define MAX_USERS 100
+#define MAX_NAME_LEN 50
+
+// Structure to represent a user
+typedef struct {
+    char name[MAX_NAME_LEN];
+    int numFriends;
+    int friends[MAX_USERS];
+} User;
+
+// Array to store all users
+User users[MAX_USERS];
+int numUsers = 0;
+
+// Function to add a new user
+void addUser(char *name) {
+    if (numUsers >= MAX_USERS) {
+        printf("Error: Maximum number of users reached.\n");
+        return;
+    }
+
+    strcpy(users[numUsers].name, name);
+    users[numUsers].numFriends = 0;
+    numUsers++;
+}
+
+// Function to delete a user
+void deleteUser(char *name) {
+    int i, j, k;
+    int userIndex = -1;
+
+    // Find the user to delete
+    for (i = 0; i < numUsers; i++) {
+        if (strcmp(users[i].name, name) == 0) {
+            userIndex = i;
+            break;
+        }
+    }
+
+    if (userIndex == -1) {
+        printf("Error: User '%s' not found.\n", name);
+        return;
+    }
+
+    // Remove the user from other users' friend lists
+    for (i = 0; i < numUsers; i++) {
+        for (j = 0; j < users[i].numFriends; j++) {
+            if (users[i].friends[j] == userIndex) {
+                for (k = j; k < users[i].numFriends - 1; k++) {
+                    users[i].friends[k] = users[i].friends[k + 1];
+                }
+                users[i].numFriends--;
+                break;
+            }
+        }
+    }
+
+    // Shift users in the array to remove the user
+    for (i = userIndex; i < numUsers - 1; i++) {
+        users[i] = users[i + 1];
+    }
+    numUsers--;
+
+    // Update friends' indices due to the shift
+    for (i = 0; i < numUsers; i++) {
+        for (j = 0; j < users[i].numFriends; j++) {
+            if (users[i].friends[j] > userIndex) {
+                users[i].friends[j]--;
+            }
+        }
+    }
+
+    printf("User '%s' deleted successfully.\n", name);
+}
+
+// Function to add a friend connection
+void addFriend(char *user1, char *user2) {
+    int i, j;
+    for (i = 0; i < numUsers; i++) {
+        if (strcmp(users[i].name, user1) == 0) {
+            for (j = 0; j < numUsers; j++) {
+                if (strcmp(users[j].name, user2) == 0) {
+                    users[i].friends[users[i].numFriends++] = j;
+                    users[j].friends[users[j].numFriends++] = i;
+                    return;
+                }
+            }
+            printf("Error: User '%s' not found.\n", user2);
+            return;
+        }
+    }
+          printf("Error: User '%s' not found.\n", user1);
+}
+
+// Function to find the shortest path using BFS
+void findShortestPath(char *startUser, char *endUser) {
+    int startIndex = -1, endIndex = -1;
+    int i, j;
+
+    // Find the indices of the start and end users
+    for (i = 0; i < numUsers; i++) {
+        if (strcmp(users[i].name, startUser) == 0) {
+            startIndex = i;
+        }
+        if (strcmp(users[i].name, endUser) == 0) {
+            endIndex = i;
+        }
+    }
+    if (startIndex == -1 || endIndex == -1) {
+        printf("Error: One or both users not found.\n");
+        return;
+    }
+
+    // BFS variables
+    int visited[MAX_USERS] = {0};
+    int prev[MAX_USERS];
+    for (i = 0; i < MAX_USERS; i++) {
+        prev[i] = -1;
+    }
+
+    // Queue for BFS
+    int queue[MAX_USERS];
+    int front = 0, rear = 0;
+
+    // Start BFS
+    visited[startIndex] = 1;
+    queue[rear++] = startIndex;
+
+
+    while (front < rear) {
+        int currentIndex = queue[front++];
+        
+        for (i = 0; i < users[currentIndex].numFriends; i++) {
+            int friendIndex = users[currentIndex].friends[i];
+            if (!visited[friendIndex]) {
+                visited[friendIndex] = 1;
+                prev[friendIndex] = currentIndex;
+                queue[rear++] = friendIndex;
+
+                // Stop BFS when we find the end user
+                if (friendIndex == endIndex) {
+                    front = rear;
+                    break;
+                }
+            }
+        }
+    }
+
+    // Reconstruct the path
+    if (prev[endIndex] != -1 || startIndex == endIndex) {
+        printf("Shortest path from %s to %s:\n", startUser, endUser);
+        int path[MAX_USERS];
+        int pathLength = 0;
+        for (i = endIndex; i != -1; i = prev[i]) {
+            path[pathLength++] = i;
+        }
+        for (i = pathLength - 1; i >= 0; i--) {
+            printf("%s", users[path[i]].name);
+            if (i > 0) {
+                printf(" -> ");
+            }
+        }
+        printf("\n");
+    } else {
+        printf("No path found from %s to %s.\n", startUser, endUser);
+    }
+}
+
+// Function to display all users
+void displayUsers() {
+    int i, j;
+    printf("Users in the network:\n");
+    for (i = 0; i < numUsers; i++) {
+        printf("%s: ", users[i].name);
+        for (j = 0; j < users[i].numFriends; j++) {
+            printf("%s", users[users[i].friends[j]].name);
+            if (j < users[i].numFriends - 1) {
+                printf(", ");
+            }
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int choice;
+    char name[MAX_NAME_LEN];
+    char user1[MAX_NAME_LEN], user2[MAX_NAME_LEN];
+    
+    while (1) {
+        printf("1. Add User\n");
+        printf("2. Delete User\n");
+        printf("3. Add Friend\n");
+        printf("4. Find Shortest Path\n");
+        printf("5. Display Users\n");
+        printf("6. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+        
+        switch (choice) {
+            case 1:
+                printf("Enter user name: ");
+                scanf("%s", name);
+                addUser(name);
+                break;
+            case 2:
+                printf("Enter user name to delete: ");
+                scanf("%s", name);
+                deleteUser(name);
+                break;
+            case 3:
+                printf("Enter first user name: ");
+                scanf("%s", user1);
+                printf("Enter second user name: ");
+                scanf("%s", user2);
+                addFriend(user1, user2);
+                break;
+            case 4:
+                printf("Enter start user name: ");
+                scanf("%s", user1);
+                printf("Enter end user name: ");
+                scanf("%s", user2);
+                findShortestPath(user1, user2);
+                break;
+            case 5:
+                displayUsers();
+                break;
+            case 6:
+                exit(0);
+            default:
+                printf("Invalid choice, please try again.\n");
+        }
+    }
+    
+    return 0;
+}
+
+
+
+
+
+
